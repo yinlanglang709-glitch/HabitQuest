@@ -1,0 +1,45 @@
+name: habitquest
+version: 1.0.0+1
+description: HabitQuest Flutter app
+publish_to: "none"
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # 状态管理
+  provider: ^6.1.2
+
+  # 数据库核心
+  sqflite: ^2.3.2
+
+  # ---【核心缺失 1】---
+  # 必须添加这个，否则你代码里的 import 'package:sqflite_common_ffi/...' 会报错
+  # 用于让数据库在 Windows/macOS/Linux 上运行
+  sqflite_common_ffi: ^2.3.2
+
+  # ---【核心缺失 2】---
+  # 强烈建议添加。Windows 系统默认不带 sqlite3.dll
+  # 这个包会自动捆绑所需的动态库，防止应用在别的电脑上闪退
+  sqlite3_flutter_libs: ^0.5.20
+
+  # 文件路径工具
+  path: ^1.9.0
+  path_provider: ^2.1.2
+
+  # 文件选择器
+  file_picker: ^8.0.0
+
+# ---【建议补充 3】---
+# 开发依赖（不会打包进最终 App，但在开发时用于测试和代码检查）
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # 官方推荐的代码规范检查，能帮你发现很多潜在 bug
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
