@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -55,7 +57,8 @@ class LocalDb {
           )
         ''');
 
-        await db.insert('settings', {'id': 1, 'is_dark_mode': 0, 'accent_color': 'blue'});
+        await db.insert(
+            'settings', {'id': 1, 'is_dark_mode': 0, 'accent_color': 'blue'});
 
         await db.insert('habits', {
           'id': 'h1',
@@ -102,11 +105,13 @@ class LocalDb {
   }
 
   Future<void> updateSettings(UserSettings settings) async {
-    await _db!.update('settings', settings.toMap(), where: 'id = ?', whereArgs: [1]);
+    await _db!
+        .update('settings', settings.toMap(), where: 'id = ?', whereArgs: [1]);
   }
 
   Future<void> addHabit(Habit habit) async {
-    await _db!.insert('habits', habit.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    await _db!.insert('habits', habit.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> addCheckIn(CheckIn checkIn) async {
@@ -117,7 +122,8 @@ class LocalDb {
     );
     if (exists.isEmpty) {
       await _db!.insert('check_ins', checkIn.toMap());
-      final habitRows = await _db!.query('habits', where: 'id = ?', whereArgs: [checkIn.habitId]);
+      final habitRows = await _db!
+          .query('habits', where: 'id = ?', whereArgs: [checkIn.habitId]);
       if (habitRows.isNotEmpty) {
         final habit = Habit.fromMap(habitRows.first);
         await _db!.update(
@@ -131,7 +137,8 @@ class LocalDb {
   }
 
   Future<void> addMemo(Memo memo) async {
-    await _db!.insert('memos', memo.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    await _db!.insert('memos', memo.toMap(),
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> deleteMemo(String id) async {
@@ -145,10 +152,18 @@ class LocalDb {
       'memos': (await getMemos()).map((m) => m.toMap()).toList(),
       'settings': (await getSettings()).toMap(),
     };
+
     final jsonStr = jsonEncode(data);
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File('${dir.path}/habitquest_backup.json');
-    await file.writeAsString(jsonStr);
+    final Uint8List bytes = Uint8List.fromList(utf8.encode(jsonStr));
+
+    final String? savedPath = await FilePicker.platform.saveFile(
+      dialogTitle: '导出数据',
+      fileName: 'habitquest_backup.json',
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+      bytes: bytes,
+    );
+    if (savedPath == null) return;
   }
 
   Future<void> importData(File file) async {
@@ -169,7 +184,13 @@ class LocalDb {
       for (final m in data['memos']) {
         await txn.insert('memos', Map<String, dynamic>.from(m));
       }
-      await txn.update('settings', Map<String, dynamic>.from(data['settings']), where: 'id = ?', whereArgs: [1]);
+      await txn.update('settings', Map<String, dynamic>.from(data['settings']),
+          where: 'id = ?', whereArgs: [1]);
     });
+  }
+
+  Future<String> getStoragePath() async {
+    final dir = await getApplicationDocumentsDirectory();
+    return dir.path;
   }
 }

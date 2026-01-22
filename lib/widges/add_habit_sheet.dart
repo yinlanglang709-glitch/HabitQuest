@@ -81,6 +81,7 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
   @override
   Widget build(BuildContext context) {
     final insets = MediaQuery.of(context).viewInsets;
+    final themeColor = _accent(selectedColor);
     return Padding(
       padding: EdgeInsets.only(bottom: insets.bottom),
       child: Container(
@@ -100,8 +101,12 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('新建目标', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close_rounded)),
+                  const Text('新建目标',
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close_rounded)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -112,7 +117,9 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                   hintText: '例如：每日阅读30分钟',
                   filled: true,
                   fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none),
                 ),
               ),
               const SizedBox(height: 16),
@@ -124,14 +131,18 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                   hintText: '记录你的目标计划或要求...',
                   filled: true,
                   fillColor: Colors.grey.shade100,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide.none),
                 ),
               ),
               const SizedBox(height: 18),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('选择图标', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const Text('选择图标',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
                   TextButton.icon(
                     onPressed: _pickCustomIcon,
                     icon: const Icon(Icons.upload_rounded, size: 16),
@@ -147,25 +158,43 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                   if (customPreview != null)
                     _IconTile(
                       isSelected: selectedIcon.startsWith('custom:'),
-                      child: buildHabitIcon('custom:$customPreview', Colors.blueAccent, size: 44),
-                      onTap: () => setState(() => selectedIcon = 'custom:$customPreview'),
+                      selectedBorderColor: themeColor,
+                      child: buildHabitIcon('custom:$customPreview', themeColor,
+                          size: 44),
+                      onTap: () => setState(
+                          () => selectedIcon = 'custom:$customPreview'),
                     ),
-                  ...habitIcons.map(
-                        (iconData) => _IconTile(
-                      isSelected: selectedIcon == iconData.key,
-                      child: Icon(iconData.icon, color: selectedIcon == iconData.key ? Colors.white : Colors.grey.shade500),
+                  ...habitIcons.map((iconData) {
+                    final selected = selectedIcon == iconData.key;
+                    return _IconTile(
+                      isSelected: selected,
+                      selectedBorderColor: themeColor,
+                      child: Icon(
+                        iconData.icon,
+                        color: selected ? themeColor : Colors.grey.shade500,
+                      ),
                       onTap: () => setState(() => selectedIcon = iconData.key),
-                    ),
-                  ),
+                    );
+                  }),
                 ],
               ),
               const SizedBox(height: 20),
-              const Text('主题色', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              const Text('主题色',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
               const SizedBox(height: 10),
               Wrap(
                 spacing: 12,
                 children: [
-                  for (final color in ['blue', 'red', 'green', 'orange', 'purple', 'pink', 'indigo', 'amber'])
+                  for (final color in [
+                    'blue',
+                    'red',
+                    'green',
+                    'orange',
+                    'purple',
+                    'pink',
+                    'indigo',
+                    'amber'
+                  ])
                     GestureDetector(
                       onTap: () => setState(() => selectedColor = color),
                       child: Container(
@@ -174,9 +203,16 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                         decoration: BoxDecoration(
                           color: _accent(color),
                           shape: BoxShape.circle,
-                          border: selectedColor == color ? Border.all(color: Colors.white, width: 3) : null,
+                          border: selectedColor == color
+                              ? Border.all(color: Colors.white, width: 3)
+                              : null,
                           boxShadow: selectedColor == color
-                              ? [BoxShadow(color: _accent(color).withOpacity(0.4), blurRadius: 12, offset: const Offset(0, 6))]
+                              ? [
+                                  BoxShadow(
+                                      color: _accent(color).withOpacity(0.4),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6))
+                                ]
                               : [],
                         ),
                       ),
@@ -188,26 +224,28 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                 onPressed: !isValid
                     ? null
                     : () {
-                  final habit = Habit(
-                    id: DateTime.now().millisecondsSinceEpoch.toString(),
-                    userId: '1',
-                    title: titleController.text.trim(),
-                    notes: notesController.text.trim(),
-                    icon: selectedIcon,
-                    color: selectedColor,
-                    streak: 0,
-                    createdAt: DateTime.now().toIso8601String(),
-                  );
-                  context.read<AppState>().addHabit(habit);
-                  Navigator.pop(context);
-                },
+                        final habit = Habit(
+                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                          userId: '1',
+                          title: titleController.text.trim(),
+                          notes: notesController.text.trim(),
+                          icon: selectedIcon,
+                          color: selectedColor,
+                          streak: 0,
+                          createdAt: DateTime.now().toIso8601String(),
+                        );
+                        context.read<AppState>().addHabit(habit);
+                        Navigator.pop(context);
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueAccent,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
                 ),
-                child: const Text('完成创建', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text('完成创建',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -218,14 +256,24 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
 }
 
 class _IconTile extends StatelessWidget {
-  const _IconTile({required this.child, required this.onTap, required this.isSelected});
+  const _IconTile({
+    required this.child,
+    required this.onTap,
+    required this.isSelected,
+    this.selectedBorderColor,
+  });
 
   final Widget child;
   final VoidCallback onTap;
   final bool isSelected;
+  final Color? selectedBorderColor;
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = isSelected
+        ? (selectedBorderColor ?? Colors.blueAccent)
+        : Colors.grey.shade200;
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -233,9 +281,12 @@ class _IconTile extends StatelessWidget {
         width: 52,
         height: 52,
         decoration: BoxDecoration(
-          color: isSelected ? Colors.blueAccent : Colors.white,
+          color: Colors.white, // 方案A：始终白底
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: isSelected ? Colors.blueAccent : Colors.grey.shade200),
+          border: Border.all(
+            color: borderColor,
+            width: isSelected ? 2 : 1,
+          ),
         ),
         child: Center(child: child),
       ),

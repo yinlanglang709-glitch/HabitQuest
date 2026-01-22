@@ -4,6 +4,10 @@ import 'package:provider/provider.dart';
 import '../app_state.dart';
 import '../models/memo.dart';
 
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
+
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
 
@@ -73,6 +77,57 @@ class ProfilePage extends StatelessWidget {
             label: '暗黑模式',
             trailing: Switch(value: state.settings.isDarkMode, onChanged: (_) => state.toggleDarkMode()),
           ),
+          _SectionTitle(title: '数据安全'),
+          const SizedBox(height: 8),
+          _SettingsTile(
+            icon: Icons.folder_open_rounded,
+            label: '查看数据存储位置',
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () async {
+              final path = await state.db.getStoragePath();
+              if (!context.mounted) return;
+              showDialog(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: const Text('数据存储位置'),
+                  content: Text(path),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('关闭')),
+                  ],
+                ),
+              );
+            },
+          ),
+          _SettingsTile(
+            icon: Icons.download_rounded,
+            label: '导出记录',
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () async {
+              await state.db.exportData();
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('备份文件已保存到文档目录。')),
+              );
+            },
+          ),
+          _SettingsTile(
+            icon: Icons.upload_rounded,
+            label: '导入记录',
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () async {
+              final result = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['json']);
+              if (result?.files.single.path != null) {
+                await state.db.importData(File(result!.files.single.path!));
+                await state.loadAll();
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('导入成功，数据已更新。')),
+                );
+              }
+            },
+          ),
+          _SectionTitle(title: '其他'),
+          const SizedBox(height: 8),
           _SettingsTile(icon: Icons.notifications_rounded, label: '提醒管理', trailing: const Icon(Icons.chevron_right_rounded)),
           _SettingsTile(icon: Icons.security_rounded, label: '数据安全', trailing: const Icon(Icons.chevron_right_rounded)),
           _SettingsTile(icon: Icons.help_outline_rounded, label: '帮助与反馈', trailing: const Icon(Icons.chevron_right_rounded)),
@@ -115,31 +170,44 @@ class _QuickAction extends StatelessWidget {
 }
 
 class _SettingsTile extends StatelessWidget {
-  const _SettingsTile({required this.icon, required this.label, required this.trailing});
+  const _SettingsTile({required this.icon, required this.label, required this.trailing, this.onTap});
 
   final IconData icon;
   final String label;
   final Widget trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.grey.shade500),
-          const SizedBox(width: 12),
-          Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w600))),
-          trailing,
-        ],
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.grey.shade500),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+              trailing,
+            ],
+          ),
+        ),
       ),
     );
   }
+
 }
 
 class _SectionTitle extends StatelessWidget {

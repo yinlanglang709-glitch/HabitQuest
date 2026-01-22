@@ -32,6 +32,7 @@ dependencies:
 
   # 文件选择器
   file_picker: ^8.0.0
+  file_selector: ^1.0.3
 
 # ---【建议补充 3】---
 # 开发依赖（不会打包进最终 App，但在开发时用于测试和代码检查）
