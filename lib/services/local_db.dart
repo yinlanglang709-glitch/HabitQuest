@@ -19,7 +19,7 @@ class LocalDb {
     final path = join(await getDatabasesPath(), 'habitquest.db');
     _db = await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: (db, _) async {
         await db.execute('''
           CREATE TABLE habits(
@@ -30,7 +30,8 @@ class LocalDb {
             icon TEXT,
             color TEXT,
             streak INTEGER,
-            created_at TEXT
+            created_at TEXT,
+            is_archived INTEGER DEFAULT 0
           )
         ''');
         await db.execute('''
@@ -81,11 +82,21 @@ class LocalDb {
           'created_at': DateTime.now().toIso8601String(),
         });
       },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          await db.execute(
+              'ALTER TABLE habits ADD COLUMN is_archived INTEGER DEFAULT 0');
+        }
+      },
     );
   }
 
-  Future<List<Habit>> getHabits() async {
-    final rows = await _db!.query('habits', orderBy: 'created_at DESC');
+  Future<List<Habit>> getHabits({bool includeArchived = true}) async {
+    final rows = await _db!.query(
+      'habits',
+      orderBy: 'created_at DESC',
+      where: includeArchived ? null : 'is_archived = 0',
+    );
     return rows.map(Habit.fromMap).toList();
   }
 
@@ -112,6 +123,31 @@ class LocalDb {
   Future<void> addHabit(Habit habit) async {
     await _db!.insert('habits', habit.toMap(),
         conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> archiveHabit(String habitId) async {
+    await _db!.update(
+      'habits',
+      {'is_archived': 1},
+      where: 'id = ?',
+      whereArgs: [habitId],
+    );
+  }
+
+  Future<void> deleteHabit(String habitId, {required bool deleteCheckIns}) async {
+    await _db!.transaction((txn) async {
+      if (deleteCheckIns) {
+        await txn.delete('check_ins', where: 'habit_id = ?', whereArgs: [habitId]);
+        await txn.delete('habits', where: 'id = ?', whereArgs: [habitId]);
+      } else {
+        await txn.update(
+          'habits',
+          {'is_archived': 1},
+          where: 'id = ?',
+          whereArgs: [habitId],
+        );
+      }
+    });
   }
 
   Future<void> addCheckIn(CheckIn checkIn) async {
@@ -176,7 +212,9 @@ class LocalDb {
       await txn.delete('memos');
 
       for (final h in data['habits']) {
-        await txn.insert('habits', Map<String, dynamic>.from(h));
+        final habitMap = Map<String, dynamic>.from(h);
+        habitMap.putIfAbsent('is_archived', () => 0);
+        await txn.insert('habits', habitMap);
       }
       for (final c in data['checkIns']) {
         await txn.insert('check_ins', Map<String, dynamic>.from(c));

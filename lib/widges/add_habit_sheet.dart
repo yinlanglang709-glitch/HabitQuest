@@ -233,6 +233,7 @@ class _AddHabitSheetState extends State<AddHabitSheet> {
                           color: selectedColor,
                           streak: 0,
                           createdAt: DateTime.now().toIso8601String(),
+                          isArchived: false,
                         );
                         context.read<AppState>().addHabit(habit);
                         Navigator.pop(context);

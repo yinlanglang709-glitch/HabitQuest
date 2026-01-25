@@ -7,6 +7,7 @@ class Habit {
   final String color;
   final int streak;
   final String createdAt;
+  final bool isArchived;
 
   Habit({
     required this.id,
@@ -17,6 +18,7 @@ class Habit {
     required this.color,
     required this.streak,
     required this.createdAt,
+    required this.isArchived,
   });
 
   Map<String, dynamic> toMap() => {
@@ -28,6 +30,7 @@ class Habit {
     'color': color,
     'streak': streak,
     'created_at': createdAt,
+    'is_archived': isArchived ? 1 : 0,
   };
 
   Habit copyWith({
@@ -39,6 +42,7 @@ class Habit {
     String? color,
     int? streak,
     String? createdAt,
+    bool? isArchived,
   }) {
     return Habit(
       id: id ?? this.id,
@@ -49,17 +53,26 @@ class Habit {
       color: color ?? this.color,
       streak: streak ?? this.streak,
       createdAt: createdAt ?? this.createdAt,
+      isArchived: isArchived ?? this.isArchived,
     );
   }
 
-  static Habit fromMap(Map<String, dynamic> map) => Habit(
-    id: map['id'],
-    userId: map['user_id'],
-    title: map['title'],
-    notes: map['notes'] ?? '',
-    icon: map['icon'] ?? 'sun',
-    color: map['color'] ?? 'blue',
-    streak: map['streak'] ?? 0,
-    createdAt: map['created_at'] ?? '',
-  );
+  static Habit fromMap(Map<String, dynamic> map) {
+    final rawArchived = map['is_archived'];
+    final isArchived = rawArchived == 1 ||
+        rawArchived == true ||
+        rawArchived == '1' ||
+        rawArchived == 'true';
+    return Habit(
+      id: map['id'],
+      userId: map['user_id'],
+      title: map['title'],
+      notes: map['notes'] ?? '',
+      icon: map['icon'] ?? 'sun',
+      color: map['color'] ?? 'blue',
+      streak: map['streak'] ?? 0,
+      createdAt: map['created_at'] ?? '',
+      isArchived: isArchived,
+    );
+  }
 }
