@@ -48,6 +48,8 @@ class HabitPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final dates = _buildDateStrip();
+    final habits =
+        state.habits.where((habit) => !habit.isArchived).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -129,7 +131,7 @@ class HabitPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: state.habits.isEmpty
+              child: habits.isEmpty
                   ? Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -151,13 +153,14 @@ class HabitPage extends StatelessWidget {
                   : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
                 itemBuilder: (context, index) {
-                  final habit = state.habits[index];
+                  final habit = habits[index];
                   final accent = _accent(habit.color);
                   final done = state.isHabitDoneToday(habit.id);
                   return _HabitCard(
                     habit: habit,
                     accent: accent,
                     done: done,
+                    onDelete: () => _showDeleteDialog(context, habit),
                     onTap: () {
                       if (!done) {
                         showDialog(context: context, builder: (_) => CheckInDialog(habit: habit));
@@ -166,7 +169,7 @@ class HabitPage extends StatelessWidget {
                   );
                 },
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemCount: state.habits.length,
+                itemCount: habits.length,
               ),
             ),
           ],
@@ -174,15 +177,74 @@ class HabitPage extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _showDeleteDialog(BuildContext context, Habit habit) async {
+    bool deleteCheckIns = false;
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: const Text('删除习惯'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('确定要删除「${habit.title}」吗？'),
+                const SizedBox(height: 12),
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: deleteCheckIns,
+                  onChanged: (value) =>
+                      setState(() => deleteCheckIns = value ?? false),
+                  title: const Text('同时删除打卡记录'),
+                ),
+                if (deleteCheckIns)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      '打卡数据不可恢复，请谨慎操作。',
+                      style: TextStyle(color: Colors.redAccent, fontSize: 12),
+                    ),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('取消'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  context
+                      .read<AppState>()
+                      .deleteHabit(habit.id, deleteCheckIns: deleteCheckIns);
+                  Navigator.pop(context);
+                },
+                child: const Text('删除'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _HabitCard extends StatelessWidget {
-  const _HabitCard({required this.habit, required this.accent, required this.done, required this.onTap});
+  const _HabitCard({
+    required this.habit,
+    required this.accent,
+    required this.done,
+    required this.onTap,
+    required this.onDelete,
+  });
 
   final Habit habit;
   final Color accent;
   final bool done;
   final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -239,6 +301,12 @@ class _HabitCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 12),
+              IconButton(
+                icon: const Icon(Icons.delete_outline),
+                color: Colors.grey.shade500,
+                tooltip: '删除习惯',
+                onPressed: onDelete,
+              ),
               Container(
                 width: 36,
                 height: 36,

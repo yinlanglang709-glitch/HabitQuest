@@ -19,7 +19,7 @@ class AppState extends ChangeNotifier {
   int activeTab = 2;
 
   Future<void> loadAll() async {
-    habits = await db.getHabits();
+    habits = await db.getHabits(includeArchived: true);
     checkIns = await db.getCheckIns();
     memos = await db.getMemos();
     settings = await db.getSettings();
@@ -33,6 +33,11 @@ class AppState extends ChangeNotifier {
 
   Future<void> addHabit(Habit habit) async {
     await db.addHabit(habit);
+    await loadAll();
+  }
+
+  Future<void> deleteHabit(String habitId, {required bool deleteCheckIns}) async {
+    await db.deleteHabit(habitId, deleteCheckIns: deleteCheckIns);
     await loadAll();
   }
 

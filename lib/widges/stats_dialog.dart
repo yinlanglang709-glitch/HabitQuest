@@ -9,11 +9,13 @@ class StatsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
+    final activeHabits =
+        state.habits.where((habit) => !habit.isArchived).toList();
     final today = DateTime.now().toIso8601String().split('T')[0];
     final todayCheckIns = state.checkIns.where((c) => c.date == today).length;
     final total = state.checkIns.length;
-    final best = state.habits.isEmpty ? 0 : state.habits.map((h) => h.streak).reduce((a, b) => a > b ? a : b);
-    final rate = state.habits.isEmpty ? 0 : (todayCheckIns / state.habits.length * 100).round();
+    final best = activeHabits.isEmpty ? 0 : activeHabits.map((h) => h.streak).reduce((a, b) => a > b ? a : b);
+    final rate = activeHabits.isEmpty ? 0 : (todayCheckIns / activeHabits.length * 100).round();
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -38,7 +40,7 @@ class StatsDialog extends StatelessWidget {
               crossAxisSpacing: 12,
               childAspectRatio: 1.3,
               children: [
-                _StatCard(title: '今日完成', value: '$todayCheckIns/${state.habits.length}', color: Colors.blueAccent, icon: Icons.check_circle_rounded),
+                _StatCard(title: '今日完成', value: '$todayCheckIns/${activeHabits.length}', color: Colors.blueAccent, icon: Icons.check_circle_rounded),
                 _StatCard(title: '最长连续', value: '$best', color: Colors.orangeAccent, icon: Icons.emoji_events_rounded),
                 _StatCard(title: '累计打卡', value: '$total', color: Colors.green, icon: Icons.trending_up_rounded),
                 _StatCard(title: '今日进度', value: '$rate%', color: Colors.purpleAccent, icon: Icons.calendar_month_rounded),
@@ -49,6 +51,7 @@ class StatsDialog extends StatelessWidget {
             const SizedBox(height: 8),
             ...() {
               final ranked = [...state.habits];
+              ranked.removeWhere((habit) => habit.isArchived);
               ranked.sort((a, b) => b.streak.compareTo(a.streak));
               return ranked.take(3).map(
                     (h) => Container(
