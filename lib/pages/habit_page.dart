@@ -2,23 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../app_state.dart';
+import '../models/chech_in.dart';
 import '../models/habit.dart';
 import '../widges/add_habit_sheet.dart';
 import '../widges/check_in_dialog.dart';
 import '../widges/habit_icon.dart';
 import '../widges/stats_dialog.dart';
 
-class HabitPage extends StatelessWidget {
+class HabitPage extends StatefulWidget {
   const HabitPage({super.key});
 
+  @override
+  State<HabitPage> createState() => _HabitPageState();
+}
+
+class _HabitPageState extends State<HabitPage> {
+  DateTime _anchorDate = DateTime.now();
+  DateTime _selectedDate = DateTime.now();
+
   List<_DateInfo> _buildDateStrip() {
-    final today = DateTime.now();
     return List.generate(7, (index) {
-      final date = today.subtract(Duration(days: 3 - index));
+      final date = _anchorDate.subtract(Duration(days: 3 - index));
       return _DateInfo(
         label: ['日', '一', '二', '三', '四', '五', '六'][date.weekday % 7],
         day: date.day,
-        isToday: date.day == today.day && date.month == today.month,
+        isToday: _isSameDay(date, DateTime.now()),
+        isSelected: _isSameDay(date, _selectedDate),
+        date: date,
       );
     });
   }
@@ -42,6 +52,69 @@ class HabitPage extends StatelessWidget {
       default:
         return Colors.blueAccent;
     }
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
+  String _formatDate(DateTime date) =>
+      "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
+  void _shiftDateStrip(int days) {
+    setState(() {
+      final nextAnchor = _anchorDate.add(Duration(days: days));
+      final today = DateTime.now();
+      if (nextAnchor.isAfter(today)) {
+        _anchorDate = DateTime(today.year, today.month, today.day);
+      } else {
+        _anchorDate = nextAnchor;
+      }
+      _selectedDate = _anchorDate;
+    });
+  }
+
+  CheckIn? _checkInForDate(AppState state, Habit habit) {
+    final dateStr = _formatDate(_selectedDate);
+    try {
+      return state.checkIns
+          .firstWhere((c) => c.habitId == habit.id && c.date == dateStr);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void _showCheckInDetail(
+      BuildContext context, Habit habit, CheckIn? checkIn) {
+    final dateLabel = _formatDate(_selectedDate);
+    showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('打卡详情 • $dateLabel'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('习惯：${habit.title}'),
+              const SizedBox(height: 8),
+              if (checkIn == null)
+                const Text('当日未打卡')
+              else ...[
+                Text('记录时间：${checkIn.timestamp.isEmpty ? '未记录' : checkIn.timestamp}'),
+                const SizedBox(height: 6),
+                Text('备注：${checkIn.notes.isEmpty ? '无' : checkIn.notes}'),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('关闭'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -91,42 +164,58 @@ class HabitPage extends StatelessWidget {
         child: Column(
           children: [
             const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: dates
-                    .map(
-                      (d) => Column(
-                    children: [
-                      Text(
-                        d.label,
-                        style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        width: 40,
-                        height: 40,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: d.isToday ? Colors.blueAccent : Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: d.isToday
-                              ? [BoxShadow(color: Colors.blueAccent.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))]
-                              : [],
-                        ),
-                        child: Text(
-                          d.isToday ? '今' : d.day.toString(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: d.isToday ? Colors.white : Colors.grey.shade700,
+            GestureDetector(
+              onHorizontalDragEnd: (details) {
+                if (details.primaryVelocity == null) return;
+                if (details.primaryVelocity! < 0) {
+                  _shiftDateStrip(-7);
+                } else if (details.primaryVelocity! > 0) {
+                  _shiftDateStrip(7);
+                }
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: dates
+                      .map(
+                        (d) => InkWell(
+                      onTap: () => setState(() => _selectedDate = d.date),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Column(
+                        children: [
+                          Text(
+                            d.label,
+                            style: TextStyle(fontSize: 11, color: Colors.grey.shade500, fontWeight: FontWeight.bold),
                           ),
-                        ),
+                          const SizedBox(height: 6),
+                          Container(
+                            width: 40,
+                            height: 40,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: d.isSelected
+                                  ? Colors.blueAccent
+                                  : Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: d.isSelected
+                                  ? [BoxShadow(color: Colors.blueAccent.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))]
+                                  : [],
+                            ),
+                            child: Text(
+                              d.isToday ? '今' : d.day.toString(),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: d.isSelected ? Colors.white : Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                )
-                    .toList(),
+                    ),
+                  )
+                      .toList(),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -155,12 +244,17 @@ class HabitPage extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final habit = habits[index];
                   final accent = _accent(habit.color);
-                  final done = state.isHabitDoneToday(habit.id);
+                  final checkIn = _checkInForDate(state, habit);
+                  final done = checkIn != null;
                   return _HabitCard(
                     habit: habit,
                     accent: accent,
                     done: done,
                     onDelete: () => _showDeleteDialog(context, habit),
+                    onShowDetail: () => _showCheckInDetail(context, habit, checkIn),
+                    detailLabel: done
+                        ? '已打卡 • ${checkIn!.timestamp.isEmpty ? '未记录时间' : checkIn.timestamp}'
+                        : '未打卡',
                     onTap: () {
                       if (!done) {
                         showDialog(context: context, builder: (_) => CheckInDialog(habit: habit));
@@ -238,6 +332,8 @@ class _HabitCard extends StatelessWidget {
     required this.done,
     required this.onTap,
     required this.onDelete,
+    required this.onShowDetail,
+    required this.detailLabel,
   });
 
   final Habit habit;
@@ -245,6 +341,8 @@ class _HabitCard extends StatelessWidget {
   final bool done;
   final VoidCallback onTap;
   final VoidCallback onDelete;
+  final VoidCallback onShowDetail;
+  final String detailLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -286,6 +384,22 @@ class _HabitCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(habit.notes, style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
                     ],
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: onShowDetail,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Text(
+                          detailLabel,
+                          style: TextStyle(
+                            color: done ? Colors.green.shade600 : Colors.grey.shade500,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -332,6 +446,14 @@ class _DateInfo {
   final String label;
   final int day;
   final bool isToday;
+  final bool isSelected;
+  final DateTime date;
 
-  _DateInfo({required this.label, required this.day, required this.isToday});
+  _DateInfo({
+    required this.label,
+    required this.day,
+    required this.isToday,
+    required this.isSelected,
+    required this.date,
+  });
 }
